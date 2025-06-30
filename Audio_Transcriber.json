@@ -1,0 +1,542 @@
+{
+  "name": "Audio Transcriber",
+  "nodes": [
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2.1,
+      "position": [
+        -580,
+        340
+      ],
+      "id": "7c91f849-59de-4555-b100-8939618fa43f",
+      "name": "Summarization Chain"
+    },
+    {
+      "parameters": {
+        "model": {
+          "__rl": true,
+          "mode": "list",
+          "value": "gpt-4o-mini"
+        },
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1.2,
+      "position": [
+        -500,
+        560
+      ],
+      "id": "22a7e202-0cd0-43d6-a93b-276c4b9c53ab",
+      "name": "OpenAI Chat Model",
+      "credentials": {
+        "openAiApi": {
+          "id": "7uQ2BdRfXJIdizM2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "triggerOn": "specificFolder",
+        "folderToWatch": {
+          "__rl": true,
+          "value": "18FkcwsVAtVKrTWGI9FU51fxUe4sj1oSG",
+          "mode": "list",
+          "cachedResultName": "audio_files",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/18FkcwsVAtVKrTWGI9FU51fxUe4sj1oSG"
+        },
+        "event": "fileCreated",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDriveTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2560,
+        200
+      ],
+      "id": "0c231be7-8aaf-4cee-abbe-63a823e38d20",
+      "name": "Watch Audio Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "THQTWreqjdTfPUyQ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "=/tmp/input_audio.mp3",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        -2120,
+        200
+      ],
+      "id": "a4f44eb7-2218-4832-9380-848e93226747",
+      "name": "Write Audio File to Disk"
+    },
+    {
+      "parameters": {
+        "operation": "download",
+        "fileId": {
+          "__rl": true,
+          "value": "={{ $json.id }}",
+          "mode": "id"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -2340,
+        200
+      ],
+      "id": "a1531958-f861-466f-a58f-7ea72a2ae25c",
+      "name": "Download Audio",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "THQTWreqjdTfPUyQ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "toText",
+        "sourceProperty": "transcript",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        -500,
+        40
+      ],
+      "id": "90ccb9c5-457c-4425-90eb-62bc33e7f6c5",
+      "name": "Convert to Text File"
+    },
+    {
+      "parameters": {
+        "name": "={{ $('Combine Transcripts').item.json.originalName.replace(/\\.mp3$/, '') }} Transcript.txt",
+        "driveId": {
+          "__rl": true,
+          "mode": "list",
+          "value": "My Drive"
+        },
+        "folderId": {
+          "__rl": true,
+          "value": "1z9RVgGg4Xxs88LagsklJQkHmuKXMXOvL",
+          "mode": "list",
+          "cachedResultName": "trancriptions",
+          "cachedResultUrl": "https://drive.google.com/drive/folders/1z9RVgGg4Xxs88LagsklJQkHmuKXMXOvL"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleDrive",
+      "typeVersion": 3,
+      "position": [
+        -200,
+        40
+      ],
+      "id": "3e133d06-c7a4-44e0-8f36-d152a9dcdcf0",
+      "name": "Upload to Transcript Folder",
+      "credentials": {
+        "googleDriveOAuth2Api": {
+          "id": "THQTWreqjdTfPUyQ",
+          "name": "Google Drive account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "return items[0].json.stdout.trim().split(\"\\n\").map(fn => ({ json: { path: `/tmp/audio_chunks/${fn}` } }));"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1460,
+        200
+      ],
+      "id": "5f0b48d0-ce36-4c75-addc-9a82d512ca8e",
+      "name": "Prepare Chunk Items"
+    },
+    {
+      "parameters": {
+        "jsCode": "const transcript = items.map(i => i.json.text).join(\" \");\nconst originalName = $items(\"Download Audio\")[0].json.name || 'Transcript';\n\nreturn [\n  {\n    json: {\n      transcript,\n      originalName\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -800,
+        200
+      ],
+      "id": "68c51bc6-c42e-45dc-a6e1-63ee40e0fd6a",
+      "name": "Combine Transcripts"
+    },
+    {
+      "parameters": {
+        "resource": "audio",
+        "operation": "transcribe",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.openAi",
+      "typeVersion": 1.8,
+      "position": [
+        -1020,
+        200
+      ],
+      "id": "3b2fe9ce-32f1-40c5-89e0-abf172045aa4",
+      "name": "Transcribe Audio",
+      "credentials": {
+        "openAiApi": {
+          "id": "7uQ2BdRfXJIdizM2",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "command": "=mkdir -p /tmp/audio_chunks && ffmpeg -i /tmp/input_audio.mp3 -f segment -segment_time 900 -c copy /tmp/audio_chunks/output_%03d.mp3"
+      },
+      "name": "Split Audio (ffmpeg)",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -1900,
+        200
+      ],
+      "id": "f227202d-10a9-4056-b40d-5ca71e5a9275"
+    },
+    {
+      "parameters": {
+        "command": "ls -1 /tmp/audio_chunks"
+      },
+      "name": "List Chunks",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        -1680,
+        200
+      ],
+      "id": "40d2c557-2908-45a5-8aed-c5b9f9858c1e"
+    },
+    {
+      "parameters": {
+        "content": "## Watch for audio file creation and write it to disk",
+        "height": 340,
+        "width": 640,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -2620,
+        40
+      ],
+      "typeVersion": 1,
+      "id": "7238192e-ff9a-4420-9c2f-1df333609bde",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "filePath": "={{$json[\"path\"]}}"
+      },
+      "name": "Read Chunk Binary",
+      "type": "n8n-nodes-base.readBinaryFile",
+      "typeVersion": 1,
+      "position": [
+        -1240,
+        200
+      ],
+      "id": "836d0b3b-22fb-474e-8596-d2bce2955271"
+    },
+    {
+      "parameters": {
+        "command": "=rm /tmp/input_audio.mp3 && rm -rf /tmp/audio_chunks"
+      },
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [
+        20,
+        40
+      ],
+      "id": "53807435-8691-416a-9b94-6427f49b7cb2",
+      "name": "Cleanup Disk Files"
+    },
+    {
+      "parameters": {
+        "title": "={{ $('Combine Transcripts').item.json.originalName.replace(/\\.mp3$/, '') }}",
+        "additionalFields": {
+          "content": "=Summary:\n{{ $json.output.text }}\n\nSpeech:\n{{ $('Combine Transcripts').item.json.transcript }}"
+        }
+      },
+      "type": "n8n-nodes-base.wordpress",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        340
+      ],
+      "id": "6410b140-0800-4bb0-a41a-2631022e4164",
+      "name": "Create Wordpress Post",
+      "credentials": {
+        "wordpressApi": {
+          "id": "FQEpZMe9REHzgnT8",
+          "name": "Wordpress account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Split audio into 900 second chunks and prepare for transcription",
+        "height": 340,
+        "width": 660,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1960,
+        40
+      ],
+      "typeVersion": 1,
+      "id": "bf66e868-9a54-4c8e-bb77-a61c71a0fa26",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "content": "## Read and transcribe all audio files and combine them",
+        "height": 340,
+        "width": 640,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1280,
+        40
+      ],
+      "typeVersion": 1,
+      "id": "1098660e-7ec0-41f3-8890-c22a4582ac73",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "content": "## Convert transcript to a text file and upload it to Google Drive",
+        "height": 320,
+        "width": 540
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -600,
+        -100
+      ],
+      "typeVersion": 1,
+      "id": "638de61b-6b45-4aa6-9ee5-102ddd9fe59d",
+      "name": "Sticky Note3"
+    },
+    {
+      "parameters": {
+        "content": "## Create a summary of the transcript and create a WordPress post containing both the summary and transcript",
+        "height": 460,
+        "width": 700,
+        "color": 4
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -620,
+        240
+      ],
+      "typeVersion": 1,
+      "id": "e79868c3-d4a8-4d0d-b69d-e5c48c70e56d",
+      "name": "Sticky Note4"
+    },
+    {
+      "parameters": {
+        "content": "## Delete Disk Files",
+        "height": 320,
+        "width": 260,
+        "color": 7
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -40,
+        -100
+      ],
+      "typeVersion": 1,
+      "id": "a6c058a3-d143-4198-8c16-59e100556144",
+      "name": "Sticky Note5"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Create Wordpress Post",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Watch Audio Folder": {
+      "main": [
+        [
+          {
+            "node": "Download Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Write Audio File to Disk": {
+      "main": [
+        [
+          {
+            "node": "Split Audio (ffmpeg)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Audio": {
+      "main": [
+        [
+          {
+            "node": "Write Audio File to Disk",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert to Text File": {
+      "main": [
+        [
+          {
+            "node": "Upload to Transcript Folder",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Transcript Folder": {
+      "main": [
+        [
+          {
+            "node": "Cleanup Disk Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Chunk Items": {
+      "main": [
+        [
+          {
+            "node": "Read Chunk Binary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine Transcripts": {
+      "main": [
+        [
+          {
+            "node": "Convert to Text File",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcribe Audio": {
+      "main": [
+        [
+          {
+            "node": "Combine Transcripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Audio (ffmpeg)": {
+      "main": [
+        [
+          {
+            "node": "List Chunks",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "List Chunks": {
+      "main": [
+        [
+          {
+            "node": "Prepare Chunk Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Chunk Binary": {
+      "main": [
+        [
+          {
+            "node": "Transcribe Audio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "70d687bf-35f8-4eb4-8ff5-08fa423e18e6",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "404da7777b9ae3a6ef4a84e36ff3f6ed18ddf4e223c2dd8f9560a48938216fe2"
+  },
+  "id": "ZBQXQXSYPEzMGOQR",
+  "tags": []
+}
